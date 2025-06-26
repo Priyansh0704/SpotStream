@@ -99,15 +99,30 @@ export async function onboard(req,res) {
           !nativeLanguage && "nativeLanguage",
           !learningLanguage && "learningLanguage",
           !location && "location", 
-        ],
+        ].filter(Boolean),
       });
     }
     const updatedUser=await User.findByIdAndUpdate(userId,{
       ...req.body,
       isOnboarded:true,
-    })
+    },{new:true}).select('-password');
+    if(!updatedUser)return res.status(404).json({message:"User not found"});
+    try {
+      await upsertStreamUser({
+        id:updatedUser._id.toString(),
+        name:updatedUser.fullName,
+        image:updatedUser.profilepic,
+      });
+      console.log(`Stream user updated after onboarding for ${updatedUser.fullName}`);
+    } catch (error) {
+      console.log("Error updating Stream user during onboarding: ", streamError.message);
+      
+    }
+      
+      res.status(200).json({success:true,user:updatedUser});
   } catch (error) {
-    t
+    console.error("Onboarding error:",error);
+    res.status(500).json({message:"Internal Server Error"});
     
   }
    
